@@ -88,6 +88,8 @@ TestGroup all_tests[] = {
             // equals(a, b) is equivalent to .check(a == b), but it can
             // automatically output error message on fail to ease debugging
             test.equals(res, "c++ is the best!");
+            // this will fail and print why
+            test.equals(res, "c++ is the worst!");
         }),
 
         // timed tests are made out of other tests (PrettyTest is this case) and

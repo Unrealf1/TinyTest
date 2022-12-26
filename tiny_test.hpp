@@ -10,15 +10,9 @@
 #include <limits>
 #include <chrono>
 
-#ifdef __has_include
-#  if __has_include(<source_location>)
-#    include <source_location>
-#    ifdef __cpp_lib_source_location
-#      define USE_SOURCE_LOCATION
-#    endif // __cpp_lib_source_location
-#  endif // __has_include
+#ifndef TINY_TEST__NO_SOURCE_LOCATIO
+#include <source_location>
 #endif
-
 
 template <typename T>
 constexpr auto type_name() {
@@ -102,7 +96,7 @@ namespace testing {
             return result;
         }
 
-#ifdef USE_SOURCE_LOCATION
+#ifndef TINY_TEST__NO_SOURCE_LOCATIO
         bool check(bool condition, const std::source_location location = std::source_location::current()) {
             result &= condition;
             if (condition == false) {
