@@ -31,11 +31,11 @@ TestGroup all_tests[] = {
         })
     ),
 
-    TestGroup("string tests", 
+    TestGroup("string tests",
         // PrettyTest is a bit more complex: instead of a
         // predicate without arguments it expects a functor that
         // accepts PrettyTest& and returns nothing. Then functor
-        // may call .check(bool) method on it's argument, which 
+        // may call .check(bool) method on it's argument, which
         // acts similar to ASSERT in other test frameworks. If one
         // or more .check() calls recieve false as an argument,
         // the test is failed and all failed checks will print
@@ -92,23 +92,23 @@ TestGroup all_tests[] = {
             test.equals(res, "c++ is the worst!");
         }),
 
-        // timed tests are made out of other tests (PrettyTest is this case) and
+        // Timed tests are made out of other tests (PrettyTest is this case) and
         // they time execution of the given test using std::clock
         make_timed_test<PrettyTest>("raw push_back perfomance", [](auto& test){
             const size_t repeats = 1'000;
-            
+
             std::string string;
             for (size_t i = 0; i < repeats; ++i) {
                 string.push_back('c');
             }
         }),
 
-        // tou can (optionally) give test a max allowed execution time(in microseconds). 
-        // If execution takes longer than given time, test will fail. However, 
+        // You can (optionally) give test a max allowed execution time(in microseconds).
+        // If execution takes longer than given time, test will fail. However,
         // test will run to it's end, job cancellation is not supported
         make_timed_test<PrettyTest>(1us, "reserved push_back perfomance", [](auto& test){
             const size_t repeats = 1'000;
-            
+
             std::string string;
             string.reserve(repeats);
             for (size_t i = 0; i < repeats; ++i) {
@@ -116,10 +116,11 @@ TestGroup all_tests[] = {
             }
         })
     ),
-    TestGroup("third group", 
+    TestGroup("third group",
         make_test<PrettyTest>("float equals", [](auto& test){
             // .float equals(a, b, delta) is equivalent to .check(std::abs(a - b) < delta)
-            test.float_equals(1.0, 1.1, 0.11);       
+            test.float_equals(1.0, 1.1, 0.11);
+            test.float_equals(1.0, 1.1, 0.01);
         })
     )
 };
