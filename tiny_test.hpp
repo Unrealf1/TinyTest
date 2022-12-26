@@ -5,14 +5,50 @@
 #include <string>
 #include <memory>
 #include <iostream>
+#include <iomanip>
+#include <ctime>
+#include <limits>
+#include <chrono>
 
-#ifdef USE_SOURCE_LOCATION
-#include <source_location>
+#ifdef __has_include
+#  if __has_include(<source_location>)
+#    include <source_location>
+#    ifdef __cpp_lib_source_location
+#      define USE_SOURCE_LOCATION
+#    endif // __cpp_lib_source_location
+#  endif // __has_include
 #endif
 
 
+template <typename T>
+constexpr auto type_name() {
+    std::string_view name, prefix, suffix;
+#ifdef __clang__
+    name = __PRETTY_FUNCTION__;
+    prefix = "auto type_name() [T = ";
+    suffix = "]";
+#elif defined(__GNUC__)
+    name = __PRETTY_FUNCTION__;
+    prefix = "constexpr auto type_name() [with T = ";
+    suffix = "]";
+#elif defined(_MSC_VER)
+    name = __FUNCSIG__;
+    prefix = "auto __cdecl type_name<";
+    suffix = ">(void)";
+#endif
+    name.remove_prefix(prefix.size());
+    name.remove_suffix(suffix.size());
+    return name;
+}
+
 namespace testing {
-    
+    using namespace std::chrono_literals;
+
+    template<typename T>
+    concept Printable = requires(T item, std::ostream ostr) {
+        { ostr << item };
+    };
+
     class Test {
     public:
         Test(std::string name): name_(std::move(name)) {}
@@ -55,14 +91,6 @@ namespace testing {
     };
 
     template<typename Functor>
-    std::unique_ptr<SimpleTest<Functor>> make_simple_test(
-            std::string name, 
-            Functor f) {
-        return std::make_unique<SimpleTest<Functor>>(std::move(name), std::move(f));
-    }
-
-
-    template<typename Functor>
     class PrettyTest: public Test {
     public:
         PrettyTest(std::string name, Functor f)
@@ -87,6 +115,32 @@ namespace testing {
             return condition;
         }
 
+        template<typename First, typename Second>
+        requires Printable<First> && Printable<Second>
+        bool equals(
+                First& first,
+                Second&& second,
+                const std::source_location location = std::source_location::current()) {
+            const bool result = check(first == second, location);
+            if (!result) {
+                std::cout << first << " (" << type_name<First>() << ") != " 
+                    << second << " (" <<  type_name<Second>() << ")\n";
+            }
+            return result;
+        }
+
+        bool equals(
+                auto&& first,
+                auto&& second,
+                const std::source_location location = std::source_location::current()) {
+            return check(first == second, location);
+        }
+
+        template<typename Float>
+        bool float_equals(Float x, Float y, Float error, const std::source_location location = std::source_location::current()) {
+            return check(std::abs(x - y) < error, location);
+        }
+
         bool fail(const std::source_location location = std::source_location::current()) {
             return check(false, location);
         }
@@ -99,6 +153,15 @@ namespace testing {
         bool fail() {
             return check(false);
         }
+
+        bool equals(auto&& first, auto&& second) {
+            return check(first == second);
+        }
+
+        template<typename Float>
+        bool float_equals(Float x, Float y, Float error) {
+            return check(std::abs(x - y) < error);
+        }
 #endif
 
     private:
@@ -106,12 +169,63 @@ namespace testing {
         bool result = true;
     };
     
-    template<typename Functor>
-    std::unique_ptr<PrettyTest<Functor>> make_pretty_test(
+    template<template<typename> typename ActualTest, typename Functor>
+    std::unique_ptr<ActualTest<Functor>> make_test(
             std::string name, 
             Functor f) {
-        return std::make_unique<PrettyTest<Functor>>(std::move(name), std::move(f));
+        return std::make_unique<ActualTest<Functor>>(std::move(name), std::move(f));
     }
+
+
+    template<template<typename> typename ActualTest, typename Functor>
+    struct TimedTest : ActualTest<Functor> {
+        using Parent = ActualTest<Functor>;
+        using Parent::Parent;
+
+        template<typename... Args>
+        TimedTest(double milliseconds, Args&&... args) 
+            : Parent(std::forward<Args>(args)...)
+            , max_runtime_(milliseconds) {}
+
+        bool doTest() override {
+            auto start = std::clock();
+            auto result = Parent::doTest();
+            auto finish = std::clock();
+            double execution_ms = double(finish - start) * 1000.0 / CLOCKS_PER_SEC;
+            std::cout << "finished in " << std::setprecision(2) << execution_ms << "ms ";
+            if (max_runtime_ < execution_ms) {
+                std::cout << "(SLOW!)\n";
+                return false;
+            } else {
+                std::cout << "(OK)\n";
+            }
+            return result;
+        }
+
+    private:
+        double max_runtime_ = std::numeric_limits<double>::infinity();
+    };
+
+    template<template<typename> typename ActualTest, typename Functor>
+    auto make_timed_test(
+        std::string name,
+        Functor f
+    ) {
+        return std::make_unique<TimedTest<ActualTest, Functor>>(std::move(name), std::move(f));
+    }
+
+    template<template<typename> typename ActualTest, typename Functor>
+    auto make_timed_test(
+        std::chrono::microseconds time_limit,
+        std::string name,
+        Functor f
+    ) {
+        const double to_milliseconds = 1e-3;
+        return std::make_unique<TimedTest<ActualTest, Functor>>(
+                double(time_limit.count()) * to_milliseconds, std::move(name), std::move(f)
+        );
+    }
+
 
     class TestGroup {
     public:
