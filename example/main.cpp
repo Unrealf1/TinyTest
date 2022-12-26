@@ -129,6 +129,7 @@ int main() {
     bool success = true;
     for (auto& group : all_tests) {
         success &= group.run();
+        std::cout << '\n';
     }
     return success ? 0 : 1;
 }
