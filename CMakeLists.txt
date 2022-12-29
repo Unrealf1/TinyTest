@@ -8,7 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 try_compile(
     HAS_SOURCE_LOCATION
-    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/empty.cpp)
+    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/source_location.cpp)
 
 if (!${HAS_SOURCE_LOCATION})
     add_compile_definitions(TINY_TEST__NO_SOURCE_LOCATION)
