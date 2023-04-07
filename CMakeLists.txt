@@ -15,3 +15,4 @@ if (!${HAS_SOURCE_LOCATION})
 endif()
 
 add_library(tiny_test INTERFACE tiny_test.hpp)
+target_include_directories(tiny_test INTERFACE .)
